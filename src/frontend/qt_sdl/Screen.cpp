@@ -31,6 +31,9 @@
 
 #include "main.h"
 #include "EmuInstance.h"
+#ifdef ENABLE_DRM_LEASE
+#include "drm_lease/DrmLeaseScreen.h"
+#endif
 
 #include "NDS.h"
 #include "GPU.h"
@@ -152,6 +155,16 @@ void ScreenPanel::setupScreenLayout()
     int sizing = screenSizing;
     if (sizing == screenSizing_Auto) sizing = autoScreenSizing;
 
+    int layoutType = screenLayout;
+#ifdef ENABLE_DRM_LEASE
+    // The bottom screen is on the leased panel.
+    if (emuInstance->drmLeaseActive())
+    {
+        sizing = screenSizing_TopOnly;
+        layoutType = screenLayout_Natural;
+    }
+#endif
+
     float aspectTop, aspectBot;
 
     for (auto ratio : aspectRatios)
@@ -169,7 +182,7 @@ void ScreenPanel::setupScreenLayout()
         aspectBot = ((float) w / h) / (4.f / 3.f);
 
     layout.Setup(w, h,
-                static_cast<ScreenLayoutType>(screenLayout),
+                static_cast<ScreenLayoutType>(layoutType),
                 static_cast<ScreenRotation>(screenRotation),
                 static_cast<ScreenSizing>(sizing),
                 screenGap,
@@ -884,6 +897,11 @@ ScreenPanelGL::~ScreenPanelGL()
 bool ScreenPanelGL::createContext()
 {
     std::optional<WindowInfo> windowinfo = getWindowInfo();
+#ifdef ENABLE_DRM_LEASE
+    // The leased output imports its scanout buffers as EGL images, which GLX cannot do.
+    if (windowinfo.has_value())
+        windowinfo->prefer_egl = DrmLeaseScreen::available();
+#endif
 
     // if our parent window is parented to another window, we will
     // share our OpenGL context with that window
