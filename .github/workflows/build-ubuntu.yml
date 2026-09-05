@@ -79,7 +79,7 @@ jobs:
       - name: Download AppImage
         uses: actions/download-artifact@v7
         with:
-          name: melonDS-appimage-aarch64
+          name: melonDS-aarch64.AppImage
           path: release-assets
       - name: Publish release
         env:
